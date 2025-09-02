@@ -4,7 +4,6 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
-  
   workflow_dispatch:
 
 permissions:
@@ -32,13 +31,13 @@ jobs:
           node-version: '20'
 
       - name: Navigate to project directory
-        run: cd dark_pedidos
+        run: cd dark_pedidos  # Asegúrate que esta carpeta existe en la raíz del repo
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci  # Usar npm ci es más confiable para CI/CD que npm install
 
       - name: Build project
-        run: npm run build
+        run: npm run build  # Asegúrate que este comando genera ./dark_pedidos/dist
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -46,12 +45,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dark_pedidos/dist'  # The correct path to the 'dist' folder
+          path: './dark_pedidos/dist'  # Ruta al output del build
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-          path: './dark_pedidos/dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
