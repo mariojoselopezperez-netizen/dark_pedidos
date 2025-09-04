@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signOut, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, getDoc, runTransaction } from 'firebase/firestore';
+import Reportes from './pages/Reportes';
 // El CSS ahora está incrustado al final del componente para evitar problemas de ruta.
 
 // --- Funciones Auxiliares de Firebase y Configuración ---
@@ -1055,6 +1056,9 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                             <div className="dashboard-card yellow">
                                 <h3>Reportes de Ventas</h3>
                                 <p>Análisis detallado de tus ventas.</p>
+                                <button className="dashboard-card-button" onClick={() => setCurrentPage("reportes")}>
+                                Ver Reportes
+                                </button>
                             </div>
                             <div className="dashboard-card red">
                                 <h3>Contabilidad y Nómina</h3>
@@ -1067,7 +1071,10 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                         </div>
                     </div>
                 );
-
+            case "reportes":
+                return <Reportes db={dbInstance} 
+                />;
+                
             case 'productManagement':
                 // Solo administradores pueden gestionar productos
                 if (role !== 'admin') {
@@ -2452,12 +2459,13 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
             {/* Cabecera de la aplicación */}
             <header className="header">
                 <div className="header-content">
-                    <h1 className="header-title">DarkPedidos POS</h1>
+                    <h1 className="header-title">DarkPedidos</h1>
                     <nav className="nav-menu">
                         <button className={`nav-button ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>Dashboard</button>
                         {/* REMOVED: Botón de Pedidos */}
                         <button className={`nav-button ${currentPage === 'tableOverview' ? 'active' : ''}`} onClick={() => setCurrentPage('tableOverview')}>Mesas</button>
                         <button className={`nav-button ${currentPage === 'productManagement' ? 'active' : ''}`} onClick={() => setCurrentPage('productManagement')}>Productos</button>
+                        <button className={`nav-button ${currentPage === 'reportes' ? 'active' : ''}`} onClick={() => setCurrentPage('reportes')}>Informes</button>
 
                         {user && (
                             <div className="user-info">
