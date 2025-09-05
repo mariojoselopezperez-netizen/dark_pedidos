@@ -3,6 +3,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signOut, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 import Reportes from './pages/Reportes';
+import { FaCog } from "react-icons/fa";
+import Configuraciones from "./pages/Config";
 // El CSS ahora está incrustado al final del componente para evitar problemas de ruta.
 
 // --- Funciones Auxiliares de Firebase y Configuración ---
@@ -1075,6 +1077,9 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                 return <Reportes db={dbInstance} 
                 />;
                 
+            case "configuraciones":
+                return <Configuraciones db={dbInstance} />;    
+
             case 'productManagement':
                 // Solo administradores pueden gestionar productos
                 if (role !== 'admin') {
@@ -2466,6 +2471,11 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                         <button className={`nav-button ${currentPage === 'tableOverview' ? 'active' : ''}`} onClick={() => setCurrentPage('tableOverview')}>Mesas</button>
                         <button className={`nav-button ${currentPage === 'productManagement' ? 'active' : ''}`} onClick={() => setCurrentPage('productManagement')}>Productos</button>
                         <button className={`nav-button ${currentPage === 'reportes' ? 'active' : ''}`} onClick={() => setCurrentPage('reportes')}>Informes</button>
+                        <button className={`nav-button ${currentPage === 'configuraciones' ? 'active' : ''}`} onClick={() => setCurrentPage('configuraciones')}
+                            >
+                            <FaCog style={{ marginRight: 5 }} />
+                            </button>
+                            
 
                         {user && (
                             <div className="user-info">
