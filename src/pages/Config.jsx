@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FaBuilding, FaFileAlt, FaPercentage } from "react-icons/fa";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 // Función para convertir números a letras en español
 function numeroALetras(num) {
@@ -36,6 +36,15 @@ function numeroALetras(num) {
 
 export default function Configuraciones() {
   const [tab, setTab] = useState("empresa");
+  const [empresa, setEmpresa] = useState({
+    nombre: "",
+    registro: "",
+    ruc: "",
+    celular: "",
+    telefono: "",
+    direccion: "",
+    web: "",
+  });
 
   const tabs = [
     { id: "empresa", label: "Datos de Empresa", icon: <FaBuilding /> },
@@ -67,28 +76,32 @@ export default function Configuraciones() {
 
       {/* Content */}
       <div className="bg-white shadow rounded-lg p-4">
-        {tab === "empresa" && <EmpresaSection />}
+        {tab === "empresa" && <EmpresaSection empresa={empresa} setEmpresa={setEmpresa} />}
         {tab === "reportes" && <ReportesSection />}
-        {tab === "impuestos" && <CalculadoraLaboral />}
+        {tab === "impuestos" && <CalculadoraLaboral empresa={empresa} />}
       </div>
     </div>
   );
 }
 
-function EmpresaSection() {
+function EmpresaSection({ empresa, setEmpresa }) {
+  const handleChange = (e) => {
+    setEmpresa({ ...empresa, [e.target.name]: e.target.value });
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <input className="input" type="text" placeholder="Nombre de la empresa" />
-      <input className="input" type="text" placeholder="Registro patronal" />
-      <input className="input" type="text" placeholder="RUC" />
+      <input className="input" type="text" name="nombre" placeholder="Nombre de la empresa" value={empresa.nombre} onChange={handleChange} />
+      <input className="input" type="text" name="registro" placeholder="Registro patronal" value={empresa.registro} onChange={handleChange} />
+      <input className="input" type="text" name="ruc" placeholder="RUC" value={empresa.ruc} onChange={handleChange} />
       <input className="input" type="file" accept="image/*" />
       <label className="flex items-center gap-2">
         <input type="checkbox" /> Encabezado condicional en reportes
       </label>
-      <input className="input" type="text" placeholder="Celular" />
-      <input className="input" type="text" placeholder="Teléfono" />
-      <input className="input" type="text" placeholder="Dirección" />
-      <input className="input" type="text" placeholder="Página web" />
+      <input className="input" type="text" name="celular" placeholder="Celular" value={empresa.celular} onChange={handleChange} />
+      <input className="input" type="text" name="telefono" placeholder="Teléfono" value={empresa.telefono} onChange={handleChange} />
+      <input className="input" type="text" name="direccion" placeholder="Dirección" value={empresa.direccion} onChange={handleChange} />
+      <input className="input" type="text" name="web" placeholder="Página web" value={empresa.web} onChange={handleChange} />
     </div>
   );
 }
@@ -121,7 +134,7 @@ function ReportesSection() {
   );
 }
 
-function CalculadoraLaboral() {
+function CalculadoraLaboral({ empresa }) {
   const [salario, setSalario] = useState("");
   const [años, setAños] = useState("");
   const [meses, setMeses] = useState("");
@@ -167,19 +180,32 @@ function CalculadoraLaboral() {
     if (!resultados) return;
     const doc = new jsPDF("p", "mm", "a4");
 
-    doc.setFontSize(14);
+    // Nombre de la empresa (encabezado)
+    doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("Comprobante de Liquidación", 105, 15, { align: "center" });
+    doc.text(empresa.nombre || "Nombre de la Empresa", 105, 15, { align: "center" });
 
+    // Datos de la empresa
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("NIT: 900.954.348-6", 15, 25);
+    doc.text(`RUC: ${empresa.ruc || "No especificado"}`, 15, 25);
+    if (empresa.direccion) {
+      doc.text(`Dirección: ${empresa.direccion}`, 15, 30);
+    }
+
+    // Fecha y No. comprobante
     doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 160, 25);
     doc.text("No.: ______", 160, 30);
 
-    let y = 40;
+    // Título del comprobante
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("Comprobante de Liquidación", 105, 40, { align: "center" });
+
+    let y = 50;
     const tabla = resultados.map(r => [r.titulo, `C$ ${r.valor.toFixed(2)}`]);
-    doc.autoTable({
+
+    autoTable(doc, {
       startY: y,
       head: [["Concepto", "Valor"]],
       body: tabla,
@@ -188,19 +214,22 @@ function CalculadoraLaboral() {
       styles: { fontSize: 10, halign: "center" },
     });
 
+    const finalY = doc.lastAutoTable.finalY || y;
+
     const total = resultados.reduce((acc, r) => acc + r.valor, 0);
     const totalLetras = numeroALetras(Math.floor(total));
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: C$ ${total.toFixed(2)}`, 160, doc.lastAutoTable.finalY + 10);
+    doc.text(`TOTAL: C$ ${total.toFixed(2)}`, 160, finalY + 10);
     doc.setFont("helvetica", "normal");
-    doc.text(`SON: ${totalLetras.toUpperCase()} CÓRDOBAS`, 15, doc.lastAutoTable.finalY + 20);
+    doc.text(`SON: ${totalLetras.toUpperCase()} CÓRDOBAS`, 15, finalY + 20);
 
-    doc.text("_________________________", 30, doc.lastAutoTable.finalY + 50);
-    doc.text("Representante Legal", 40, doc.lastAutoTable.finalY + 55);
-    doc.text("_________________________", 130, doc.lastAutoTable.finalY + 50);
-    doc.text("Trabajador", 145, doc.lastAutoTable.finalY + 55);
+    // Firmas
+    doc.text("_________________________", 30, finalY + 50);
+    doc.text("Representante Legal", 40, finalY + 55);
+    doc.text("_________________________", 130, finalY + 50);
+    doc.text("Trabajador", 145, finalY + 55);
 
     doc.save(`liquidacion_${new Date().toISOString().slice(0,10)}.pdf`);
   };
