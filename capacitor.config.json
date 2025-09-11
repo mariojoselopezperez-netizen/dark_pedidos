@@ -1,5 +1,6 @@
 {
   "appId": "com.mario.darkpedidos",
   "appName": "DarkPedidos",
-  "webDir": "dist"
+  "webDir": "dist",
+  "bundledWebRuntime": false
 }
