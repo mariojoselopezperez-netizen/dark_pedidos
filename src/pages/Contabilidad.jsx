@@ -3,9 +3,10 @@ import { FaBook, FaFileAlt, FaDownload, FaPlus, FaEdit, FaTrash, FaEye, FaFilePd
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import formatCordoba from '../utils/currency';
 
-export default function Contabilidad() {
-  const [activeTab, setActiveTab] = useState('registros');
+export default function Contabilidad({ initialTab }) {
+  const [activeTab, setActiveTab] = useState(initialTab || 'registros');
   const [registros, setRegistros] = useState([
     {
       id: 1,
@@ -96,8 +97,6 @@ export default function Contabilidad() {
 
   const exportToPDF = () => {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
     
     // Header
@@ -117,8 +116,8 @@ export default function Contabilidad() {
         r.fecha,
         r.concepto,
         r.cuenta,
-        `$${r.debe.toFixed(2)}`,
-        `$${r.haber.toFixed(2)}`,
+        formatCordoba(r.debe),
+        formatCordoba(r.haber),
         r.niif
       ]),
       theme: 'grid',
@@ -141,8 +140,8 @@ export default function Contabilidad() {
     
     doc.setFontSize(10);
     doc.setFont(undefined, 'bold');
-    doc.text(`Total Débitos: $${totalDebes.toFixed(2)}`, margin, doc.internal.pageSize.getHeight() - 20);
-    doc.text(`Total Créditos: $${totalHaberes.toFixed(2)}`, margin + 80, doc.internal.pageSize.getHeight() - 20);
+    doc.text(`Total Débitos: ${formatCordoba(totalDebes)}`, margin, doc.internal.pageSize.getHeight() - 20);
+    doc.text(`Total Créditos: ${formatCordoba(totalHaberes)}`, margin + 80, doc.internal.pageSize.getHeight() - 20);
 
     doc.save(`libro-diario-${new Date().toISOString().split('T')[0]}.pdf`);
   };
@@ -185,7 +184,8 @@ export default function Contabilidad() {
           {[
             { id: 'registros', label: 'Registros Contables', icon: FaBook },
             { id: 'niif', label: 'Normas NIIF', icon: FaFileAlt },
-            { id: 'reportes', label: 'Reportes', icon: FaDownload }
+            { id: 'reportes', label: 'Reportes', icon: FaDownload },
+            { id: 'nomina', label: 'Nómina', icon: FaFileAlt }
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -212,15 +212,15 @@ export default function Contabilidad() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-green-900 to-green-800 rounded-lg p-6 text-white">
                 <p className="text-sm font-medium text-green-300 mb-1">Total Débitos</p>
-                <p className="text-3xl font-bold">${balance.totalDebes.toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatCordoba(balance.totalDebes)}</p>
               </div>
               <div className="bg-gradient-to-br from-red-900 to-red-800 rounded-lg p-6 text-white">
                 <p className="text-sm font-medium text-red-300 mb-1">Total Créditos</p>
-                <p className="text-3xl font-bold">${balance.totalHaberes.toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatCordoba(balance.totalHaberes)}</p>
               </div>
               <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-lg p-6 text-white">
                 <p className="text-sm font-medium text-blue-300 mb-1">Balance</p>
-                <p className="text-3xl font-bold">${balance.balance.toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatCordoba(balance.balance)}</p>
               </div>
             </div>
 
@@ -267,8 +267,8 @@ export default function Contabilidad() {
                         <td className="px-6 py-4 text-slate-300">{registro.fecha}</td>
                         <td className="px-6 py-4 text-slate-300">{registro.concepto}</td>
                         <td className="px-6 py-4 text-slate-300">{registro.cuenta}</td>
-                        <td className="px-6 py-4 text-right text-green-400 font-medium">${registro.debe.toFixed(2)}</td>
-                        <td className="px-6 py-4 text-right text-red-400 font-medium">${registro.haber.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right text-green-400 font-medium">{formatCordoba(registro.debe)}</td>
+                        <td className="px-6 py-4 text-right text-red-400 font-medium">{formatCordoba(registro.haber)}</td>
                         <td className="px-6 py-4 text-slate-300 text-sm">{registro.niif}</td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex gap-2 justify-center">
@@ -318,15 +318,15 @@ export default function Contabilidad() {
               <div className="space-y-3">
                 <div className="flex justify-between text-slate-300 pb-2 border-b border-slate-700">
                   <span>Total Activos</span>
-                  <span className="font-bold text-green-400">${balance.totalDebes.toFixed(2)}</span>
+                  <span className="font-bold text-green-400">{formatCordoba(balance.totalDebes)}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 pb-2 border-b border-slate-700">
                   <span>Total Pasivos</span>
-                  <span className="font-bold text-red-400">${balance.totalHaberes.toFixed(2)}</span>
+                  <span className="font-bold text-red-400">{formatCordoba(balance.totalHaberes)}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 pt-2">
                   <span className="font-bold">Patrimonio</span>
-                  <span className="font-bold text-blue-400">${balance.balance.toFixed(2)}</span>
+                  <span className="font-bold text-blue-400">{formatCordoba(balance.balance)}</span>
                 </div>
               </div>
             </div>
@@ -338,17 +338,38 @@ export default function Contabilidad() {
               <div className="space-y-3">
                 <div className="flex justify-between text-slate-300 pb-2 border-b border-slate-700">
                   <span>Ingresos Totales</span>
-                  <span className="font-bold text-green-400">${balance.totalDebes.toFixed(2)}</span>
+                  <span className="font-bold text-green-400">{formatCordoba(balance.totalDebes)}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 pb-2 border-b border-slate-700">
                   <span>Gastos Totales</span>
-                  <span className="font-bold text-red-400">${balance.totalHaberes.toFixed(2)}</span>
+                  <span className="font-bold text-red-400">{formatCordoba(balance.totalHaberes)}</span>
                 </div>
                 <div className="flex justify-between text-slate-300 pt-2">
                   <span className="font-bold">Utilidad Neta</span>
-                  <span className="font-bold text-blue-400">${(balance.totalDebes - balance.totalHaberes).toFixed(2)}</span>
+                  <span className="font-bold text-blue-400">{formatCordoba(balance.totalDebes - balance.totalHaberes)}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Nomina */}
+        {activeTab === 'nomina' && (
+          <div className="bg-slate-800 rounded-lg p-6">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <FaFileAlt /> Nómina
+            </h3>
+            <div>
+              {/* Import dinámico para evitar aumentar bundle si no se usa */}
+              <React.Suspense fallback={<div className="text-white">Cargando nómina...</div>}>
+                {/* Usamos require/import dinámico para cargar el componente de página */}
+                {(() => {
+                  // Import dinámico con import() para compatibilidad ESM
+                  const NominaAsync = React.lazy(() => import('../pages/Nomina'));
+                  const Nom = NominaAsync;
+                  return <Nom />;
+                })()}
+              </React.Suspense>
             </div>
           </div>
         )}
@@ -393,7 +414,7 @@ export default function Contabilidad() {
                 />
               </div>
               <div>
-                <label className="block text-slate-300 font-medium mb-2">Débito ($)</label>
+                <label className="block text-slate-300 font-medium mb-2">Débito (C$)</label>
                 <input
                   type="number"
                   value={newRegistro.debe}
@@ -402,7 +423,7 @@ export default function Contabilidad() {
                 />
               </div>
               <div>
-                <label className="block text-slate-300 font-medium mb-2">Crédito ($)</label>
+                <label className="block text-slate-300 font-medium mb-2">Crédito (C$)</label>
                 <input
                   type="number"
                   value={newRegistro.haber}

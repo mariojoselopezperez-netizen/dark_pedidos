@@ -1,10 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import jsPDF from "jspdf";
+import html2canvas from 'html2canvas';
+
+import MetricCard from "../components/MetricCard";
+import ReportFilters from "../components/ReportFilters";
+import formatCordoba from '../utils/currency';
 
 export default function Reportes({ db }) {
   const [ventasDia, setVentasDia] = useState([]);
@@ -30,30 +35,30 @@ export default function Reportes({ db }) {
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        const fecha = data.date?.toDate() || new Date();
+        const fecha = data.date?.toDate ? data.date.toDate() : new Date();
         const fechaStr = fecha.toLocaleDateString();
 
         ventasData.push({
           id: doc.id,
           fecha: fechaStr,
-          total: data.originalOrderTotal || 0,
+          total: data.originalOrderTotal || data.totalPaid || 0,
           cliente: data.customerName || "Cliente desconocido",
           tipoPago: data.type || "Desconocido",
           items: data.orderItems || []
         });
 
         // Flujo
-        if (data.type === "cash") flujo.Efectivo += data.totalPaid || 0;
-        if (data.type === "card") flujo.Tarjeta += data.totalPaid || 0;
+        if (data.type === "cash") flujo.Efectivo += data.totalPaid || data.originalOrderTotal || 0;
+        if (data.type === "card") flujo.Tarjeta += data.totalPaid || data.originalOrderTotal || 0;
         if (data.type === "credit") {
-          flujo.Crédito += data.totalPaid || 0;
+          flujo.Crédito += data.totalPaid || data.originalOrderTotal || 0;
           const cliente = data.customerName || "Cliente desconocido";
           cuentas[cliente] = (cuentas[cliente] || 0) + (data.amountPending || 0);
         }
 
         // Rotación
         (data.orderItems || []).forEach(item => {
-          productos[item.name] = (productos[item.name] || 0) + item.quantity;
+          productos[item.name] = (productos[item.name] || 0) + (item.quantity || 0);
         });
       });
 
@@ -67,7 +72,7 @@ export default function Reportes({ db }) {
     fetchData();
   }, [db]);
 
-  // Aplicar filtros
+  // Aplicar filtros (filtroFecha ya convertida a localDateString por ReportFilters)
   useEffect(() => {
     let filtradas = ventasDia;
     if (filtroFecha) filtradas = filtradas.filter(v => v.fecha === filtroFecha);
@@ -76,157 +81,205 @@ export default function Reportes({ db }) {
     setVentasFiltradas(filtradas);
   }, [filtroFecha, filtroCliente, filtroPago, ventasDia]);
 
-  const exportarPDF = () => {
-  const doc = new jsPDF();
+  // Totales y métricas derivadas
+  const totalVentas = useMemo(() => ventasFiltradas.reduce((s, v) => s + (v.total || 0), 0), [ventasFiltradas]);
+  const totalCuentas = useMemo(() => cuentasPorCobrar.reduce((s, c) => s + (c.saldo || 0), 0), [cuentasPorCobrar]);
+  const topProducto = useMemo(() => {
+    if (!rotacionProductos || rotacionProductos.length === 0) return { nombre: '-', qty: 0 };
+    return rotacionProductos.reduce((a, b) => (b.qty > a.qty ? b : a), rotacionProductos[0]);
+  }, [rotacionProductos]);
 
-  // Encabezado
-  const nombreRestaurante = "DarkPedidos Restaurante";
-  const fechaActual = new Date().toLocaleDateString();
+  const exportarPDF = async () => {
+    const doc = new jsPDF();
+    const nombreRestaurante = "DarkPedidos Restaurante";
+    const fechaActual = new Date().toLocaleDateString();
 
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(nombreRestaurante, 105, 20, { align: "center" });
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(nombreRestaurante, 105, 20, { align: "center" });
 
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text("Reporte de Ventas - " + fechaActual, 105, 30, { align: "center" });
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Reporte - " + fechaActual, 105, 30, { align: "center" });
 
-  // Cuadro principal
-  const margenX = 15;
-  const margenY = 40;
-  const ancho = 180;
-  const alto = 120;
+    let y = 40;
+    doc.setFontSize(11);
+    doc.text(`Total ventas: ${formatCordoba(totalVentas)}`, 15, y);
+    doc.text(`Cuentas por cobrar: ${formatCordoba(totalCuentas)}`, 110, y);
+    y += 10;
 
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(margenX, margenY, ancho, alto); // Dibuja el cuadro
-
-  // Contenido dentro del cuadro
-  let startY = margenY + 10;
-  doc.setFontSize(10);
-  doc.text("Detalle de Ventas del Día:", margenX + 5, startY);
-
-  startY += 10;
-  let totalGeneral = 0;
-
-  ventasFiltradas.forEach((venta, i) => {
-    if (startY > margenY + alto - 10) {
-      doc.addPage(); // Nueva página si nos pasamos
-      startY = 20;
+    // Intentar capturar gráficos por id y añadirlos al PDF
+    try {
+      const chartVentasEl = document.getElementById('chart-ventas');
+      const chartFlujoEl = document.getElementById('chart-flujo');
+      if (chartVentasEl) {
+        const canvas = await html2canvas(chartVentasEl, { backgroundColor: null });
+        const imgData = canvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', 15, y, 180, 60);
+        y += 70;
+      }
+      if (chartFlujoEl) {
+        const canvas2 = await html2canvas(chartFlujoEl, { backgroundColor: null });
+        const imgData2 = canvas2.toDataURL('image/png');
+        if (y + 70 > 280) { doc.addPage(); y = 20; }
+        doc.addImage(imgData2, 'PNG', 15, y, 100, 60);
+        y += 70;
+      }
+    } catch (err) {
+      console.warn('No se pudieron capturar los charts:', err);
     }
 
-    doc.text(
-      `${i + 1}. ${venta.fecha} - ${venta.cliente} - ${venta.tipoPago} - $${venta.total.toFixed(2)}`,
-      margenX + 5,
-      startY
-    );
-    startY += 8;
-    totalGeneral += venta.total;
-  });
+    doc.text(`Top producto: ${topProducto.nombre} (x${topProducto.qty})`, 15, y);
+    y += 12;
 
-  // Total general
-  startY += 10;
-  doc.setFont("helvetica", "bold");
-  doc.text(`Total General: $${totalGeneral.toFixed(2)}`, margenX + 5, startY);
+    doc.text('Detalle de ventas:', 15, y);
+    y += 8;
 
-  // Guardar PDF
-  doc.save(`reporte_ventas_${fechaActual}.pdf`);
-};
+    ventasFiltradas.forEach((v, i) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.text(`${i + 1}. ${v.fecha} - ${v.cliente} - ${v.tipoPago} - ${formatCordoba(v.total)}`, 15, y);
+      y += 7;
+    });
 
+    doc.save(`reporte_ventas_${fechaActual}.pdf`);
+  };
+
+  const exportarCSV = () => {
+    const rows = [];
+    const headers = ['Fecha','Cliente','TipoPago','Total','Items'];
+    rows.push(headers.join(','));
+    ventasFiltradas.forEach(v => {
+      const items = (v.items || []).map(it => `${it.name}(x${it.quantity})`).join(' | ');
+      const line = [`"${v.fecha}"`,`"${v.cliente.replace(/"/g,'') }"`, v.tipoPago, (v.total||0).toFixed(2), `"${items.replace(/"/g,'') }"`];
+      rows.push(line.join(','));
+    });
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_ventas_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportarXLSX = async () => {
+    try {
+      const xlsxModule = await import('xlsx');
+      const XLSX = xlsxModule.default || xlsxModule;
+
+      const data = ventasFiltradas.map(v => ({
+        Fecha: v.fecha,
+        Cliente: v.cliente,
+        TipoPago: v.tipoPago,
+        Total: (v.total||0).toFixed(2),
+        Items: (v.items || []).map(it => `${it.name}(x${it.quantity})`).join(' | ')
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
+      XLSX.writeFile(wb, `reporte_ventas_${new Date().toISOString().slice(0,10)}.xlsx`);
+    } catch (err) {
+      console.error('Error exportando XLSX:', err);
+      alert('Para exportar a XLSX instala la dependencia: npm install xlsx');
+    }
+  };
+
+  const clearFilters = () => { setFiltroCliente(''); setFiltroFecha(''); setFiltroPago(''); };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Reportes</h2>
-
-      {/* --- Gráfico Ventas del Día --- */}
-      <h3>Ventas del Día</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={ventasDia}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="fecha" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="total" fill="#82ca9d" />
-        </BarChart>
-      </ResponsiveContainer>
-
-      {/* --- Gráfico Flujo Efectivo --- */}
-      <h3>Flujo de Efectivo</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie data={flujoEfectivo} dataKey="total" nameKey="tipo" cx="50%" cy="50%" outerRadius={100} label>
-            {flujoEfectivo.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28"][index % 3]} />
-            ))}
-          </Pie>
-          <Legend />
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
-
-      {/* --- Gráfico Rotación Productos --- */}
-      <h3>Rotación de Productos</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={rotacionProductos}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="nombre" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="qty" fill="#8884d8" />
-        </BarChart>
-      </ResponsiveContainer>
-
-      {/* --- Cuentas por Cobrar --- */}
-      <h3>Cuentas por Cobrar</h3>
-      <ul>
-        {cuentasPorCobrar.map((c, i) => (
-          <li key={i}>{c.cliente}: ${c.saldo.toFixed(2)}</li>
-        ))}
-      </ul>
-
-      {/* --- Filtros y Detalle Ventas --- */}
-      <h3>Detalle de Ventas del Día</h3>
-      <div style={{ marginBottom: 20 }}>
-        <input type="text" placeholder="Filtrar por cliente" value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ marginRight: 10 }} />
-        <input type="date" onChange={e => setFiltroFecha(new Date(e.target.value).toLocaleDateString())} style={{ marginRight: 10 }} />
-        <select value={filtroPago} onChange={e => setFiltroPago(e.target.value)}>
-          <option value="">Todos</option>
-          <option value="cash">Efectivo</option>
-          <option value="card">Tarjeta</option>
-          <option value="credit">Crédito</option>
-        </select>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Reportes</h2>
+          <p className="text-sm text-gray-400">Visión general y análisis</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={exportarPDF} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md">Exportar PDF</button>
+          <button onClick={exportarCSV} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md">Exportar CSV</button>
+          <button onClick={exportarXLSX} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-md">Exportar XLSX</button>
+        </div>
       </div>
 
-      <table border="1" cellPadding="8" cellSpacing="0" style={{ width: "100%", marginBottom: 20 }}>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Cliente</th>
-            <th>Tipo Pago</th>
-            <th>Total</th>
-            <th>Items</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ventasFiltradas.map(v => (
-            <tr key={v.id}>
-              <td>{v.fecha}</td>
-              <td>{v.cliente}</td>
-              <td>{v.tipoPago}</td>
-              <td>${v.total.toFixed(2)}</td>
-              <td>
-                {v.items.map((i, idx) => (
-                  <div key={idx}>{i.name} (x{i.quantity})</div>
-                ))}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard title="Ventas filtradas" value={formatCordoba(totalVentas)} subtitle={`${ventasFiltradas.length} registros`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" /></svg>} />
+        <MetricCard title="Cuentas por Cobrar" value={formatCordoba(totalCuentas)} subtitle={`${cuentasPorCobrar.length} clientes`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2" /></svg>} />
+        <MetricCard title="Top Producto" value={topProducto.nombre} subtitle={`Vendidos: ${topProducto.qty}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" /></svg>} />
+      </div>
 
-      <button onClick={exportarPDF} style={{ marginTop: 10, padding: 10, background: "green", color: "white" }}>
-        Exportar PDF
-      </button>
+      <ReportFilters
+        filtroCliente={filtroCliente}
+        setFiltroCliente={setFiltroCliente}
+        filtroFecha={filtroFecha}
+        setFiltroFecha={setFiltroFecha}
+        filtroPago={filtroPago}
+        setFiltroPago={setFiltroPago}
+        onClear={clearFilters}
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white/5 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold text-white mb-2">Ventas del Día</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={ventasDia}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+              <XAxis dataKey="fecha" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip />
+              <Bar dataKey="total" fill="#06b6d4" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white/5 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold text-white mb-2">Flujo de Efectivo</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie data={flujoEfectivo} dataKey="total" nameKey="tipo" cx="50%" cy="50%" outerRadius={100} label>
+                {flujoEfectivo.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28"][index % 3]} />
+                ))}
+              </Pie>
+              <Legend />
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="bg-white/5 p-4 rounded-lg">
+        <h3 className="text-lg font-semibold text-white mb-3">Detalle de Ventas</h3>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left">
+            <thead>
+              <tr className="text-sm text-gray-400">
+                <th className="py-2">Fecha</th>
+                <th className="py-2">Cliente</th>
+                <th className="py-2">Tipo Pago</th>
+                <th className="py-2">Total</th>
+                <th className="py-2">Items</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm text-gray-200">
+              {ventasFiltradas.map(v => (
+                <tr key={v.id} className="border-t border-white/5">
+                  <td className="py-3">{v.fecha}</td>
+                  <td className="py-3">{v.cliente}</td>
+                  <td className="py-3">{v.tipoPago}</td>
+                  <td className="py-3">{formatCordoba(v.total)}</td>
+                  <td className="py-3">
+                    {(v.items || []).map((i, idx) => (
+                      <div key={idx} className="text-xs text-gray-400">{i.name} (x{i.quantity})</div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

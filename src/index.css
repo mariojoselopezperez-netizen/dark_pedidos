@@ -11,21 +11,21 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
-  
-  /* Colores Neutros */
-  --color-bg-dark: #0f172a;
-  --color-bg-light: #1e293b;
-  --color-surface: #1a2a3a;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-border: #334155;
-  
+
+  /* Colores Neutros (modo claro por defecto para mejor legibilidad) */
+  --color-bg-dark: #ffffff;
+  --color-bg-light: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-border: #e6eef6;
+
   /* Tipografía */
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--color-text-primary);
   background-color: var(--color-bg-dark);
 

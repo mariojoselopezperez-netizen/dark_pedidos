@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signOut, onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 import Reportes from './pages/Reportes';
+import Contabilidad from './pages/Contabilidad';
 import { FaCog } from "react-icons/fa";
 import Configuraciones from "./pages/Config";
 // El CSS ahora está incrustado al final del componente para evitar problemas de ruta.
@@ -52,6 +53,7 @@ const App = () => {
     const [role, setRole] = useState('invitado'); // 'invitado', 'empleado', 'admin'
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState('dashboard');
+    const [contabilidadTab, setContabilidadTab] = useState('registros');
     const [displayName, setDisplayName] = useState('Cargando...'); // Nuevo estado para el nombre legible
 
     // Estados para Gestión de Productos
@@ -1062,10 +1064,18 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                 Ver Reportes
                                 </button>
                             </div>
-                            <div className="dashboard-card red">
-                                <h3>Contabilidad y Nómina</h3>
-                                <p>Control financiero y de personal.</p>
-                            </div>
+                                                        <div className="dashboard-card red">
+                                                                <h3>Contabilidad y Nómina</h3>
+                                                                <p>Control financiero y de personal.</p>
+                                                                <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                                                                    <button className="dashboard-card-button" onClick={() => { setContabilidadTab('registros'); setCurrentPage('contabilidad'); }}>
+                                                                        Ir a Contabilidad
+                                                                    </button>
+                                                                    <button className="dashboard-card-button" onClick={() => { setContabilidadTab('nomina'); setCurrentPage('contabilidad'); }}>
+                                                                        Ir a Nómina
+                                                                    </button>
+                                                                </div>
+                                                        </div>
                             <div className="dashboard-card teal">
                                 <h3>Facturación y Pagos</h3>
                                 <p>Procesa pagos y genera facturas.</p>
@@ -1076,6 +1086,8 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
             case "reportes":
                 return <Reportes db={dbInstance} 
                 />;
+            case 'contabilidad':
+                return <Contabilidad initialTab={contabilidadTab} />;
                 
             case "configuraciones":
                 return <Configuraciones db={dbInstance} />;    
