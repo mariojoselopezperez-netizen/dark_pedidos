@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import formatCordoba from '../utils/currency';
 
 export default function PayrollCalculator({ employees }) {
   const [selectedId, setSelectedId] = useState(employees[0]?.id || null);
@@ -28,15 +29,15 @@ export default function PayrollCalculator({ employees }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-slate-800 p-3 rounded text-white">
           <div className="text-sm text-gray-400">Salario devengado</div>
-          <div className="text-2xl font-bold">${(resultado.salarioDevengado||0).toFixed(2)}</div>
+          <div className="text-2xl font-bold">{formatCordoba(resultado.salarioDevengado)}</div>
         </div>
         <div className="bg-slate-800 p-3 rounded text-white">
           <div className="text-sm text-gray-400">Deducciones</div>
-          <div className="text-2xl font-bold text-red-400">-${(resultado.deducciones||0).toFixed(2)}</div>
+          <div className="text-2xl font-bold text-red-400">-{formatCordoba(resultado.deducciones)}</div>
         </div>
         <div className="bg-slate-800 p-3 rounded text-white">
           <div className="text-sm text-gray-400">Neto a pagar</div>
-          <div className="text-2xl font-bold text-green-400">${(resultado.neto||0).toFixed(2)}</div>
+          <div className="text-2xl font-bold text-green-400">{formatCordoba(resultado.neto)}</div>
         </div>
       </div>
     </div>

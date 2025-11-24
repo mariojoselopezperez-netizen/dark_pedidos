@@ -6,6 +6,7 @@ import Reportes from './pages/Reportes';
 import Contabilidad from './pages/Contabilidad';
 import { FaCog } from "react-icons/fa";
 import Configuraciones from "./pages/Config";
+import formatCordoba from './utils/currency';
 // El CSS ahora está incrustado al final del componente para evitar problemas de ruta.
 
 // --- Funciones Auxiliares de Firebase y Configuración ---
@@ -475,7 +476,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
 
         const confirmation = window.confirm(
             `Confirmar pedido para ${selectedTable.name}:\n\n` +
-            `Total: $${calculateOrderTotal().toFixed(2)}\n\n` +
+            `Total: ${formatCordoba(calculateOrderTotal())}\n\n` +
             `¿Deseas guardar este pedido como "Pendiente de Pagar"?`
         );
 
@@ -656,7 +657,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                         amountReceived: received,
                         changeGiven: change > 0 ? change : 0,
                         amountPending: pending > 0 ? pending : 0,
-                        paymentDescription: `Pago en Efectivo. Recibido: $${received.toFixed(2)}, Vuelto: $${change.toFixed(2)}`
+                        paymentDescription: `Pago en Efectivo. Recibido: ${formatCordoba(received)}, Vuelto: ${formatCordoba(change)}`
                     };
                     break;
                 case 'card':
@@ -665,7 +666,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                         amountReceived: cardAmount,
                         changeGiven: 0,
                         amountPending: (totalToPay - cardAmount) > 0 ? (totalToPay - cardAmount) : 0,
-                        paymentDescription: `Pago con Tarjeta. Monto: $${cardAmount.toFixed(2)}`
+                        paymentDescription: `Pago con Tarjeta. Monto: ${formatCordoba(cardAmount)}`
                     };
                     break;
                 case 'credit':
@@ -675,7 +676,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                         changeGiven: 0,
                         amountPending: totalToPay - creditAmount, // The remaining balance on the table if partial credit
                         customerName: creditCustomerName.trim(),
-                        paymentDescription: `Venta al Crédito a ${creditCustomerName.trim()}. Monto: $${creditAmount.toFixed(2)}`
+                        paymentDescription: `Venta al Crédito a ${creditCustomerName.trim()}. Monto: ${formatCordoba(creditAmount)}`
                     };
                     break;
                 default:
@@ -688,8 +689,10 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
 
         return (
             <div className="modal-overlay">
-                <div className="modal-content payment-details-modal">
-                    <h3>Detalle del Pedido para {currentTableForPayment.name}</h3>
+                <div className="modal-content payment-details-modal" style={{maxWidth: '500px'}}>
+                    <h3 style={{borderBottom: '2px solid #3498db', paddingBottom: '10px', marginBottom: '20px', color: '#2c3e50'}}>
+                        Facturación - Mesa {currentTableForPayment.name}
+                    </h3>
 
                     {/* Conditional rendering for ticket preview is here */}
                     {isGeneratingTicket ? (
@@ -709,7 +712,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                 {currentTableForPayment.order && currentTableForPayment.order.map((item, index) => (
                                     <li key={index} className="flex justify-between text-sm mb-1">
                                         <span>{item.name} (x{item.quantity})</span>
-                                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                        <span>{formatCordoba(item.price * item.quantity)}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -717,15 +720,15 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                             <div className="ticket-summary">
                                 <div className="flex justify-between text-sm font-medium mb-1">
                                     <span>Subtotal:</span>
-                                    <span>${subtotal.toFixed(2)}</span>
+                                    <span>{formatCordoba(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm font-medium mb-1">
                                     <span>Propina Voluntaria (10%):</span>
-                                    <span>${tipAmount.toFixed(2)}</span>
+                                    <span>{formatCordoba(tipAmount)}</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold mt-2 border-t pt-2">
                                     <span>Total:</span>
-                                    <span>${totalToPay.toFixed(2)}</span>
+                                    <span>{formatCordoba(totalToPay)}</span>
                                 </div>
                             </div>
 
@@ -752,58 +755,58 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                          item ? (
                                         <li key={index} className="flex justify-between text-sm mb-1">
                                             <span>{item.name} (x{item.quantity})</span>
-                                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                            <span>{formatCordoba(item.price * item.quantity)}</span>
                                         </li>
                                         ) : null // Si 'item' no existe, no renderices nada
                                     ))}
                                 </ul>
                                 <div className="summary-line">
                                     <span>Subtotal:</span>
-                                    <span>${subtotal.toFixed(2)}</span>
+                                    <span>{formatCordoba(subtotal)}</span>
                                 </div>
                                 <div className="summary-line tip-line">
                                     <span>Propina Voluntaria (10%):</span>
-                                    <span>${tipAmount.toFixed(2)}</span>
+                                    <span>{formatCordoba(tipAmount)}</span>
                                 </div>
                                 <div className="summary-line total-line">
                                     <span>Total a Pagar:</span>
-                                    <span>${totalToPay.toFixed(2)}</span>
+                                    <span>{formatCordoba(totalToPay)}</span>
                                 </div>
                             </div>
 
                             {paymentSelectionMode === 'summary' && (
-                                <div className="modal-buttons payment-buttons">
-                                    <button className="primary-button" onClick={() => setPaymentSelectionMode('options')}>
-                                        Facturar
+                                <div className="modal-buttons payment-buttons" style={{marginTop: '20px', gap: '10px', flexDirection: 'column'}}>
+                                    <button className="primary-button" onClick={() => setPaymentSelectionMode('options')} style={{backgroundColor: '#2ecc71', width: '100%', padding: '12px'}}>
+                                        ✓ Proceder a Facturar
                                     </button>
-                                    <button className="secondary-button" onClick={() => setShowPaymentDetailsModal(false)}>
-                                        Cancelar
+                                    <button className="secondary-button" onClick={() => setShowPaymentDetailsModal(false)} style={{width: '100%', padding: '12px'}}>
+                                        ✕ Cancelar
                                     </button>
                                 </div>
                             )}
 
                             {paymentSelectionMode === 'options' && (
-                                <div className="modal-buttons payment-buttons flex-col">
-                                    <button className="primary-button" onClick={() => setPaymentSelectionMode('cash')}>
-                                        Efectivo
+                                <div className="modal-buttons payment-buttons flex-col" style={{marginTop: '20px', flexDirection: 'column', gap: '10px'}}>
+                                    <button className="primary-button" onClick={() => setPaymentSelectionMode('cash')} style={{backgroundColor: '#27ae60', width: '100%', padding: '12px', fontSize: '1em'}}>
+                                        💵 Pago en Efectivo
                                     </button>
-                                    <button className="primary-button" onClick={() => { setCardPaymentAmount(totalToPay.toFixed(2)); setPaymentSelectionMode('card'); }}>
-                                        Tarjetas de Crédito/Débito
+                                    <button className="primary-button" onClick={() => { setCardPaymentAmount(totalToPay.toFixed(2)); setPaymentSelectionMode('card'); }} style={{backgroundColor: '#2980b9', width: '100%', padding: '12px', fontSize: '1em'}}>
+                                        💳 Pago con Tarjeta
                                     </button>
-                                    <button className="primary-button" onClick={() => { setCreditPaymentAmount(totalToPay.toFixed(2)); setPaymentSelectionMode('credit'); }}>
-                                        Ventas al Crédito
+                                    <button className="primary-button" onClick={() => { setCreditPaymentAmount(totalToPay.toFixed(2)); setPaymentSelectionMode('credit'); }} style={{backgroundColor: '#8e44ad', width: '100%', padding: '12px', fontSize: '1em'}}>
+                                        📋 Venta al Crédito
                                     </button>
-                                    <button className="secondary-button" onClick={() => setPaymentSelectionMode('summary')}>
-                                        Volver
+                                    <button className="secondary-button" onClick={() => setPaymentSelectionMode('summary')} style={{width: '100%', padding: '12px'}}>
+                                        ← Volver
                                     </button>
                                 </div>
                             )}
 
                             {paymentSelectionMode === 'cash' && (
-                                <div className="payment-method-section">
-                                    <h4 className="payment-method-title">Pago en Efectivo</h4>
+                                <div className="payment-method-section" style={{backgroundColor: '#ecf8ed', border: '1px solid #27ae60', borderRadius: '8px', padding: '15px', marginTop: '15px'}}>
+                                    <h4 className="payment-method-title" style={{color: '#27ae60', marginTop: '0'}}>💵 Pago en Efectivo</h4>
                                     <div className="form-group">
-                                        <label htmlFor="cashReceived" className="form-label">Valor Recibido ($)</label>
+                                        <label htmlFor="cashReceived" className="form-label" style={{color: '#2c3e50', fontWeight: '600'}}>Valor Recibido (C$)</label>
                                         <input
                                             id="cashReceived"
                                             type="number"
@@ -812,29 +815,30 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                             value={cashReceivedAmount}
                                             onChange={(e) => setCashReceivedAmount(e.target.value)}
                                             placeholder="Ingrese el monto recibido"
+                                            style={{fontSize: '1.1em', padding: '10px'}}
                                         />
                                     </div>
                                     {cashReceivedAmount !== '' && (
-                                        <p style={{ color: change >= 0 ? 'green' : 'red', fontWeight: 'bold' }}>
-                                            {change >= 0 ? `Vuelto a entregar: $${change.toFixed(2)}` : `Pendiente de pagar: $${Math.abs(pending).toFixed(2)}`}
+                                        <p style={{ color: change >= 0 ? '#27ae60' : '#e74c3c', fontWeight: 'bold', fontSize: '1.1em', padding: '10px', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '5px' }}>
+                                            {change >= 0 ? `✓ Vuelto a entregar: ${formatCordoba(change)}` : `⚠ Pendiente de pagar: ${formatCordoba(Math.abs(pending))}`}
                                         </p>
                                     )}
-                                    <div className="modal-buttons">
-                                        <button className="primary-button" onClick={() => handleApplyPayment('cash')} disabled={!canApplyCashPayment}>
-                                            Aplicar Pago
+                                    <div className="modal-buttons" style={{gap: '10px', marginTop: '15px'}}>
+                                        <button className="primary-button" onClick={() => handleApplyPayment('cash')} disabled={!canApplyCashPayment} style={{backgroundColor: '#27ae60', flex: 1, padding: '10px'}}>
+                                            ✓ Aplicar Pago
                                         </button>
-                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')}>
-                                            Volver
+                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')} style={{flex: 1, padding: '10px'}}>
+                                            ← Volver
                                         </button>
                                     </div>
                                 </div>
                             )}
 
                             {paymentSelectionMode === 'card' && (
-                                <div className="payment-method-section">
-                                    <h4 className="payment-method-title">Pago con Tarjeta</h4>
+                                <div className="payment-method-section" style={{backgroundColor: '#eef5fb', border: '1px solid #2980b9', borderRadius: '8px', padding: '15px', marginTop: '15px'}}>
+                                    <h4 className="payment-method-title" style={{color: '#2980b9', marginTop: '0'}}>💳 Pago con Tarjeta</h4>
                                     <div className="form-group">
-                                        <label htmlFor="cardAmount" className="form-label">Monto con Tarjeta ($)</label>
+                                        <label htmlFor="cardAmount" className="form-label" style={{color: '#2c3e50', fontWeight: '600'}}>Monto con Tarjeta (C$)</label>
                                         <input
                                             id="cardAmount"
                                             type="number"
@@ -843,24 +847,30 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                             value={cardPaymentAmount}
                                             onChange={(e) => setCardPaymentAmount(e.target.value)}
                                             placeholder="Ingrese el monto a pagar con tarjeta"
+                                            style={{fontSize: '1.1em', padding: '10px'}}
                                         />
                                     </div>
-                                    <div className="modal-buttons">
-                                        <button className="primary-button" onClick={() => handleApplyPayment('card')} disabled={!canApplyCardPayment}>
-                                            Aplicar Pago
+                                    {cardPaymentAmount !== '' && (
+                                        <p style={{color: '#2980b9', fontWeight: '600', fontSize: '0.95em', padding: '8px', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '5px'}}>
+                                            Monto a procesar: {formatCordoba(parseFloat(cardPaymentAmount) || 0)}
+                                        </p>
+                                    )}
+                                    <div className="modal-buttons" style={{gap: '10px', marginTop: '15px'}}>
+                                        <button className="primary-button" onClick={() => handleApplyPayment('card')} disabled={!canApplyCardPayment} style={{backgroundColor: '#2980b9', flex: 1, padding: '10px'}}>
+                                            ✓ Aplicar Pago
                                         </button>
-                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')}>
-                                            Volver
+                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')} style={{flex: 1, padding: '10px'}}>
+                                            ← Volver
                                         </button>
                                     </div>
                                 </div>
                             )}
 
                             {paymentSelectionMode === 'credit' && (
-                                <div className="payment-method-section">
-                                    <h4 className="payment-method-title">Ventas al Crédito</h4>
+                                <div className="payment-method-section" style={{backgroundColor: '#f4ecf7', border: '1px solid #8e44ad', borderRadius: '8px', padding: '15px', marginTop: '15px'}}>
+                                    <h4 className="payment-method-title" style={{color: '#8e44ad', marginTop: '0'}}>📋 Ventas al Crédito</h4>
                                     <div className="form-group">
-                                        <label htmlFor="creditCustomerName" className="form-label">Nombre del Cliente</label>
+                                        <label htmlFor="creditCustomerName" className="form-label" style={{color: '#2c3e50', fontWeight: '600'}}>Nombre del Cliente</label>
                                         <input
                                             id="creditCustomerName"
                                             type="text"
@@ -868,10 +878,11 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                             value={creditCustomerName}
                                             onChange={(e) => setCreditCustomerName(e.target.value)}
                                             placeholder="Ingrese el nombre del cliente"
+                                            style={{fontSize: '1em', padding: '10px'}}
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label htmlFor="creditAmount" className="form-label">Monto al Crédito ($)</label>
+                                        <label htmlFor="creditAmount" className="form-label" style={{color: '#2c3e50', fontWeight: '600'}}>Monto al Crédito (C$)</label>
                                         <input
                                             id="creditAmount"
                                             type="number"
@@ -880,14 +891,20 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                             value={creditPaymentAmount}
                                             onChange={(e) => setCreditPaymentAmount(e.target.value)}
                                             placeholder="Ingrese el monto a aplicar al crédito"
+                                            style={{fontSize: '1.1em', padding: '10px'}}
                                         />
                                     </div>
-                                    <div className="modal-buttons">
-                                        <button className="primary-button" onClick={() => handleApplyPayment('credit')} disabled={!canApplyCreditPayment}>
-                                            Aplicar Pago
+                                    {creditCustomerName && creditPaymentAmount && (
+                                        <p style={{color: '#8e44ad', fontWeight: '600', fontSize: '0.95em', padding: '8px', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '5px'}}>
+                                            Crédito para {creditCustomerName}: {formatCordoba(parseFloat(creditPaymentAmount) || 0)}
+                                        </p>
+                                    )}
+                                    <div className="modal-buttons" style={{gap: '10px', marginTop: '15px'}}>
+                                        <button className="primary-button" onClick={() => handleApplyPayment('credit')} disabled={!canApplyCreditPayment} style={{backgroundColor: '#8e44ad', flex: 1, padding: '10px'}}>
+                                            ✓ Aplicar Pago
                                         </button>
-                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')}>
-                                            Volver
+                                        <button className="secondary-button" onClick={() => setPaymentSelectionMode('options')} style={{flex: 1, padding: '10px'}}>
+                                            ← Volver
                                         </button>
                                     </div>
                                 </div>
@@ -1209,7 +1226,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                             />
                                         )}
                                         <h3>{product.name}</h3>
-                                        <p>Precio: <span className="price">${product.price.toFixed(2)}</span></p>
+                                        <p>Precio: <span className="price">{formatCordoba(product.price)}</span></p>
                                         <p>Stock: {product.noStock ? 'Sin control de stock' : product.stock}</p>
                                         <div className="product-actions">
                                             <button className="edit-button" onClick={() => setEditingProduct(product)}>Editar</button>
@@ -1254,7 +1271,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                                     onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/100x100/CCCCCC/666666?text=${product.name.substring(0,4)}`; }}
                                                 />
                                                 <h4>{product.name}</h4>
-                                                <p className="price">${product.price.toFixed(2)}</p>
+                                                <p className="price">{formatCordoba(product.price)}</p>
                                             </div>
                                         ))
                                     )}
@@ -1278,7 +1295,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                                         <span className="order-item-name-summary">{item.product.name} (x{item.quantity})</span>
                                                     </div>
                                                     <div className="order-item-actions-group"> {/* Nuevo contenedor para agrupar botones y precio */}
-                                                        <span className="order-item-total-price">${(item.product.price * item.quantity).toFixed(2)}</span>
+                                                        <span className="order-item-total-price">{formatCordoba(item.product.price * item.quantity)}</span>
                                                         <button className="quantity-button" onClick={() => updateOrderQuantity(item.product.id, -1)}>-</button>
                                                         <button className="quantity-button" onClick={() => updateOrderQuantity(item.product.id, 1)}>+</button>
                                                         <button className="remove-item-button" onClick={() => removeFromOrder(item.product.id)}>
@@ -1291,7 +1308,7 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                     </ul>
                                 </div> {/* Fin de la nueva sección */}
                                 <div className="order-summary-total">
-                                    Total: ${calculateOrderTotal().toFixed(2)}
+                                    Total: {formatCordoba(calculateOrderTotal())}
                                 </div>
                                 {/* Cambiado de Finalizar Pedido a Guardar Pedido */}
                                 <button className="checkout-order-button" onClick={saveOrder}>
@@ -1334,12 +1351,12 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                                         </p>
                                         {table.status === 'pendiente-pago' && table.orderTotal > 0 && (
                                             <>
-                                                <p className="order-total-display">Total: ${table.orderTotal.toFixed(2)}</p>
+                                                <p className="order-total-display">Total: {formatCordoba(table.orderTotal)}</p>
                                                 <button
-                                                    className="complete-payment-button" /* Renombrado del CSS */
-                                                    onClick={(e) => { e.stopPropagation(); handleShowPaymentModal(table); }} // Abre el modal de pago
+                                                    className="complete-payment-button"
+                                                    onClick={(e) => { e.stopPropagation(); handleShowPaymentModal(table); }}
                                                 >
-                                                    Facturar
+                                                    ✓ Facturar
                                                 </button>
                                             </>
                                         )}
@@ -2299,41 +2316,75 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
                     /* --- Ticket Print Preview Styles --- */
                     .ticket-print-preview {
                         background-color: white;
-                        padding: 20px;
-                        border-radius: 8px;
+                        padding: 12px;
+                        border-radius: 0;
                         box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                        width: 302px; /* Ancho explícito para 80mm (~302px) */
-                        box-sizing: border-box; /* Incluir padding en el ancho */
+                        width: 80mm; /* Ancho de 80mm para ticket estándar */
+                        max-width: 80mm;
+                        box-sizing: border-box;
                         margin: 20px auto;
-                        color: #333;
-                        font-family: 'monospace', 'Inter', sans-serif; /* Fuente de ticket */
-                        font-size: 12px; /* Base font size for ticket */
-                        text-align: center; /* Centrar todo el contenido del ticket */
+                        color: #000;
+                        font-family: 'Courier New', 'monospace';
+                        font-size: 11px;
+                        text-align: center;
+                        line-height: 1.4;
                     }
                     .company-logo {
-                        max-width: 100px;
+                        max-width: 70px;
                         height: auto;
+                        margin: 5px 0;
+                    }
+                    .ticket-print-preview h4 {
+                        font-size: 1.2em;
+                        font-weight: bold;
+                        margin: 5px 0;
+                    }
+                    .ticket-print-preview p {
+                        margin: 3px 0;
+                        font-size: 0.9em;
                     }
                     .ticket-items-list {
                         list-style: none;
-                        padding: 0;
-                        margin-bottom: 10px;
-                        border-top: 1px dashed #ccc;
-                        padding-top: 10px;
+                        padding: 5px 0;
+                        margin: 8px 0;
+                        border-top: 1px dashed #000;
+                        border-bottom: 1px dashed #000;
+                        padding: 5px 0;
                     }
                     .ticket-items-list li {
                         display: flex;
                         justify-content: space-between;
-                        font-size: 0.85em;
-                        margin-bottom: 5px;
+                        font-size: 0.9em;
+                        margin-bottom: 3px;
+                        padding: 0 5px;
                     }
                     .ticket-summary {
-                        border-top: 1px dashed #ccc;
-                        padding-top: 10px;
+                        border-top: 1px solid #000;
+                        padding-top: 5px;
+                        margin-top: 5px;
+                    }
+                    .ticket-summary .flex {
+                        display: flex;
+                        justify-content: space-between;
+                        font-size: 0.9em;
+                        margin-bottom: 2px;
+                    }
+                    .ticket-print-preview .mt-4 {
                         margin-top: 10px;
                     }
-                    .ticket-summary .total-line {
-                        font-size: 1.1em;
+                    .ticket-print-preview .text-center {
+                        text-align: center;
+                    }
+                    .ticket-print-preview .text-sm {
+                        font-size: 0.8em;
+                    }
+                    .ticket-print-preview .text-md {
+                        font-size: 1em;
+                    }
+                    .hide-on-print {
+                        display: flex;
+                        justify-content: center;
+                        margin-top: 15px;
                     }
 
                     /* Hide elements for printing */
@@ -2569,46 +2620,3 @@ const unsubscribeTables = onSnapshot(q, (snapshot) => {
 };
 
 export default App;
-const handleProcessPayment = async () => {
-    try {
-        // Asegúrate de que la base de datos esté disponible antes de continuar
-        if (!dbInstance) {
-            alert("Error: La conexión a la base de datos no está disponible. Intente recargar la página.");
-            return;
-        }
-
-        // 1. Prepara los datos del pedido que vas a guardar
-        const orderItems = currentTableForPayment.order
-            .filter(item => item && item.product)
-            .map(item => ({
-                name: item.product.name,
-                price: item.product.price,
-                quantity: item.quantity,
-            }));
-
-        const totalCost = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
-        const ventaData = {
-            orderItems: orderItems,
-            total: totalCost,
-            tableId: currentTableForPayment.id,
-            timestamp: serverTimestamp(),
-        };
-
-        // 2. Guarda la venta en una nueva colección llamada "ventas" en Firebase
-        const docRef = await addDoc(collection(dbInstance, "ventas"), ventaData);
-        console.log("Venta registrada con ID:", docRef.id);
-
-        // 3. Actualiza el estado de la mesa a "pagado" y borra el pedido
-        const mesaRef = doc(dbInstance, "mesas", currentTableForPayment.id);
-        await updateDoc(mesaRef, { status: "pagado", order: [] });
-
-        // 4. Muestra un mensaje de éxito y cierra el modal
-        alert("Pago procesado con éxito.");
-        setShowPaymentModal(false);
-
-    } catch (error) {
-        console.error("Error al procesar el pago y registrar la venta:", error);
-        alert("Ocurrió un error al procesar el pago. Revisa la consola para más detalles.");
-    }
-};
